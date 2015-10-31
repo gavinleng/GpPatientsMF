@@ -91,8 +91,8 @@ def now():
 
 
 parser = argparse.ArgumentParser(
-    description='Extract online Youth reqlessness Data csv file Section 1 to .csv file.')
-parser.add_argument("--generateConfig", "-g", help="generate a config file called config_Yreqless.json",
+    description='Extract online GP Patients by GP and LSOA Male & Female csv file to .csv file.')
+parser.add_argument("--generateConfig", "-g", help="generate a config file called config_tempGpPatientsMF.json",
                     action="store_true")
 parser.add_argument("--configFile", "-c", help="path for config file")
 args = parser.parse_args()
