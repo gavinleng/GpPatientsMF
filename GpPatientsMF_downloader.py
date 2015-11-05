@@ -7,7 +7,7 @@ import re
 import argparse
 import json
 import datetime
-
+import hashlib
 
 # url = "http://www.hscic.gov.uk/catalogue/PUB13365/gp-reg-patients-01-2014-lsoa-male.csv"
 # output_path = "tempGpPatientsMF.csv"
@@ -18,28 +18,14 @@ def download(url, reqFields, outPath):
     reqReq = reqFields
     dName = outPath
 
-    col = ['PRACTICE_CODE', 'ORG_NAME', 'Year', 'Month', 'Sex', 'LSOA_CODE', 'Value']
-
     iYear = reqReq[0]
     iMonth = reqReq[1]
     iSex = reqReq[2]
 
-    try:
-        socket = urllib.request.urlopen(url)
-    except urllib.error.HTTPError as e:
-        errfile.write(str(now()) + ' csv download HTTPError is ' + str(e.code) + ' . End progress\n')
-        logfile.write(str(now()) + ' error and end progress\n')
-        sys.exit('csv download HTTPError = ' + str(e.code))
-    except urllib.error.URLError as e:
-        errfile.write(str(now()) + ' csv download URLError is ' + str(e.args) + ' . End progress\n')
-        logfile.write(str(now()) + ' error and end progress\n')
-        sys.exit('csv download URLError = ' + str(e.args))
-    except Exception:
-        print('csv file download error')
-        import traceback
-        errfile.write(str(now()) + ' generic exception: ' + str(traceback.format_exc()) + ' . End progress\n')
-        logfile.write(str(now()) + ' error and end progress\n')
-        sys.exit('generic exception: ' + traceback.format_exc())
+    col = ['PRACTICE_CODE', 'ORG_NAME', 'Year', 'Month', 'Sex', 'LSOA_CODE', 'Value', 'pkey']
+
+    # open url
+    socket = openurl(url)
 
     raw_data = {}
     for j in col:
@@ -62,7 +48,6 @@ def download(url, reqFields, outPath):
     logfile.write(str(now()) + ' data reading\n')
     print('data reading------')
     for i in range(0, df.shape[0], 2):
-        print('reading row ' + str(i))
         if str(df.iloc[i][0]):
             eList = df.iloc[i, k:].dropna().tolist()
             raw_data[col[5]] = raw_data[col[5]] + eList
@@ -73,11 +58,19 @@ def download(url, reqFields, outPath):
     raw_data[col[2]] = [iYear] * len(raw_data[col[0]])
     raw_data[col[3]] = [iMonth] * len(raw_data[col[0]])
     raw_data[col[4]] = [iSex] * len(raw_data[col[0]])
-
     logfile.write(str(now()) + ' data reading end\n')
     print('data reading end------')
 
+    # create primary key by md5 for each row
+    logfile.write(str(now()) + ' create primary key\n')
+    print('create primary key------')
+    keyCol = [0, 2, 3, 4, 5]
+    raw_data[col[-1]] = fpkey(raw_data, col, keyCol)
+    logfile.write(str(now()) + ' create primary key end\n')
+    print('create primary key end------')
+
     # save csv file
+    logfile.write(str(now()) + ' writing to file\n')
     print('writing to file ' + dName)
     dfw = pd.DataFrame(raw_data, columns=col)
     dfw.to_csv(dName, index=False)
@@ -85,6 +78,37 @@ def download(url, reqFields, outPath):
     print('Requested data has been extracted and saved as ' + dName)
     logfile.write(str(now()) + ' finished\n')
     print("finished")
+
+def openurl(url):
+    try:
+        socket = urllib.request.urlopen(url)
+        return socket
+    except urllib.error.HTTPError as e:
+        errfile.write(str(now()) + ' file download HTTPError is ' + str(e.code) + ' . End progress\n')
+        logfile.write(str(now()) + ' error and end progress\n')
+        sys.exit('file download HTTPError = ' + str(e.code))
+    except urllib.error.URLError as e:
+        errfile.write(str(now()) + ' file download URLError is ' + str(e.args) + ' . End progress\n')
+        logfile.write(str(now()) + ' error and end progress\n')
+        sys.exit('file download URLError = ' + str(e.args))
+    except Exception:
+        print('file download error')
+        import traceback
+        errfile.write(str(now()) + ' generic exception: ' + str(traceback.format_exc()) + ' . End progress\n')
+        logfile.write(str(now()) + ' error and end progress\n')
+        sys.exit('generic exception: ' + traceback.format_exc())
+
+def fpkey(data, col, keyCol):
+    mystring = ''
+    pkey = []
+    for i in range(len(data[col[0]])):
+        print('pkey------' + str(i))
+        for j in keyCol:
+            mystring += str(data[col[j]][i])
+        mymd5 = hashlib.md5(mystring.encode()).hexdigest()
+        pkey.append(mymd5)
+
+    return pkey
 
 def now():
     return datetime.datetime.now()
@@ -127,7 +151,7 @@ if args.generateConfig:
         sys.exit("config file generated")
 
 if args.configFile == None:
-    args.configFile = "config_tempGpPatientsMF.json"
+    args.configFile = "config_tempGpPatientsF.json"
 
 with open(args.configFile) as json_file:
     oConfig = json.load(json_file)
