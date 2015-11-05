@@ -151,7 +151,7 @@ if args.generateConfig:
         sys.exit("config file generated")
 
 if args.configFile == None:
-    args.configFile = "config_tempGpPatientsF.json"
+    args.configFile = "config_tempGpPatientsMF.json"
 
 with open(args.configFile) as json_file:
     oConfig = json.load(json_file)
